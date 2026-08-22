@@ -9,7 +9,15 @@ OUT = Path("data")
 OUT.mkdir(exist_ok=True)
 
 def get_json(url):
-    r = requests.get(url, timeout=15, headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json", "X-Requested-With": "XMLHttpRequest"}
+    r = requests.get(
+        url,
+        timeout=15,
+        headers={
+            "User-Agent": "Mozilla/5.0",
+            "Accept": "application/json",
+            "X-Requested-With": "XMLHttpRequest"
+        }
+    )
     r.raise_for_status()
     return r.json()
 
