@@ -2,7 +2,7 @@ import json
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-import requests
+from curl_cffi import requests
 
 BASE = "https://api.sofascore.com/api/v1"
 OUT = Path("data")
@@ -12,6 +12,7 @@ def get_json(url):
     r = requests.get(
         url,
         timeout=15,
+        impersonate="chrome",
         headers={
             "User-Agent": "Mozilla/5.0",
             "Accept": "application/json",
