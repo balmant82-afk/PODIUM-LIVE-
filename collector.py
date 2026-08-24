@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from curl_cffi import requests
 
-BASE = "https://api.sofascore.com/api/v1"
+BASE = "https://www.sofascore.com/api/v1"
 OUT = Path("data")
 OUT.mkdir(exist_ok=True)
 
