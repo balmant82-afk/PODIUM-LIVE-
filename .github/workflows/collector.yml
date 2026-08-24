@@ -19,9 +19,12 @@ jobs:
         with:
           python-version: "3.12"
 
-      - run: pip install -r requirements.txt
+     - run: pip install -r requirements.txt
 
-      - run: python collector.py "${{ inputs.event_id }}"
+- name: Testar acesso ao SofaScore
+  run: curl -L -A "Mozilla/5.0" "https://www.sofascore.com/football/match/hellas-verona-u20-cesena-u20/bLFgsgLFg#id:16411622" -o /tmp/sofascore.html
+
+- run: python collector.py "${{ inputs.event_id }}"
 
       - name: Upload snapshot
         uses: actions/upload-artifact@v4
