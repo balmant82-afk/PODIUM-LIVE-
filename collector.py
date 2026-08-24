@@ -95,6 +95,9 @@ def collect(event_id):
 
         print("Página do jogo aberta.")
 
+        print(f"Título: {page.title()}")
+        print(f"Conteúdo da página: {page.locator('body').inner_text()[:1000]}")
+
         print("Aguardando carregamento dos dados...")
 
         page.wait_for_timeout(15000)
