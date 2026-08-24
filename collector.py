@@ -12,7 +12,6 @@ def get_json(url):
     r = requests.get(
         url,
         timeout=15,
-        impersonate="chrome",
         headers={
             "User-Agent": "Mozilla/5.0",
             "Accept": "application/json",
