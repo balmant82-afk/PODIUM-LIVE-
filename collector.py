@@ -14,36 +14,56 @@ OUT.mkdir(exist_ok=True)
 def get_json(page, url):
     print(f"Consultando: {url}")
 
-    page.goto(
-        url,
-        wait_until="domcontentloaded",
-        timeout=30000
+    result = page.evaluate(
+        """
+        async (url) => {
+            const response = await fetch(url, {
+                method: "GET",
+                credentials: "include",
+                headers: {
+                    "Accept": "application/json"
+                }
+            });
+
+            const text = await response.text();
+
+            return {
+                status: response.status,
+                text: text
+            };
+        }
+        """,
+        url
     )
 
-    page.wait_for_timeout(2000)
+    status = result["status"]
+    body = result["text"]
 
-    body = page.locator("body").inner_text()
+    print(f"Status: {status}")
 
-    if '"code":403' in body or '"reason":"challenge"' in body:
+    if status != 200:
         raise RuntimeError(
-            f"SofaScore retornou bloqueio 403 challenge: {url}"
+            f"SofaScore retornou HTTP {status} para {url}\\n"
+            f"Resposta: {body[:500]}"
         )
 
     try:
         return json.loads(body)
     except json.JSONDecodeError:
         raise RuntimeError(
-            f"Resposta não é JSON.\nPrimeiros caracteres:\n{body[:500]}"
+            f"Resposta não é JSON. Primeiros caracteres:\\n{body[:500]}"
         )
 
 
 def collect(event_id):
     snapshot = {
         "collected_at_utc": datetime.now(timezone.utc).isoformat(),
-        "event_id": event_id,
+        "event_id": event_id
     }
 
     with sync_playwright() as p:
+
+        print("Abrindo navegador...")
 
         browser = p.chromium.launch(
             headless=True
@@ -54,13 +74,12 @@ def collect(event_id):
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                 "AppleWebKit/537.36 (KHTML, like Gecko) "
                 "Chrome/131.0.0.0 Safari/537.36"
-            )
+            ),
+            locale="pt-BR"
         )
 
         page = context.new_page()
 
-        # Primeiro abrimos o site principal.
-        # Isso permite que o navegador inicialize normalmente.
         print("Abrindo SofaScore...")
 
         page.goto(
@@ -70,6 +89,8 @@ def collect(event_id):
         )
 
         page.wait_for_timeout(5000)
+
+        print("SofaScore aberto.")
 
         # Dados principais do evento
         snapshot["event"] = get_json(
@@ -97,9 +118,7 @@ def collect(event_id):
 
         browser.close()
 
-    timestamp = datetime.now(timezone.utc).strftime(
-        "%Y%m%dT%H%M%SZ"
-    )
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
     path = OUT / f"{event_id}_{timestamp}.json"
 
@@ -112,8 +131,11 @@ def collect(event_id):
         encoding="utf-8"
     )
 
-    print(f"Snapshot salvo em: {path}")
-    print("Coleta concluída com sucesso!")
+    print("")
+    print("======================================")
+    print("COLETA CONCLUÍDA COM SUCESSO")
+    print(f"Arquivo salvo: {path}")
+    print("======================================")
 
 
 if __name__ == "__main__":
