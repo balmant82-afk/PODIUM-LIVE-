@@ -80,10 +80,10 @@ def collect(event_id):
 )
 
         match_url = (
-            f"https://www.sofascore.com/"
-            f"hellas-verona-u20-cesena-u20/"
-            f"bLFgsgLFg#id:{event_id}"
-        )
+    f"https://www.sofascore.com/"
+    f"football/match/levante-ud-osasuna/vgbsZgb"
+    f"#id:{event_id}"
+)
 
         print("Abrindo página do jogo...")
 
