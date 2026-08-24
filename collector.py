@@ -6,59 +6,16 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright
 
 
-BASE = "https://www.sofascore.com/api/v1"
 OUT = Path("data")
 OUT.mkdir(exist_ok=True)
 
 
-def get_json(page, url):
-    print(f"Consultando: {url}")
-
-    result = page.evaluate(
-        """
-        async (url) => {
-            const response = await fetch(url, {
-                method: "GET",
-                credentials: "include",
-                headers: {
-                    "Accept": "application/json"
-                }
-            });
-
-            const text = await response.text();
-
-            return {
-                status: response.status,
-                text: text
-            };
-        }
-        """,
-        url
-    )
-
-    status = result["status"]
-    body = result["text"]
-
-    print(f"Status: {status}")
-
-    if status != 200:
-        raise RuntimeError(
-            f"SofaScore retornou HTTP {status} para {url}\\n"
-            f"Resposta: {body[:500]}"
-        )
-
-    try:
-        return json.loads(body)
-    except json.JSONDecodeError:
-        raise RuntimeError(
-            f"Resposta não é JSON. Primeiros caracteres:\\n{body[:500]}"
-        )
-
-
 def collect(event_id):
+
     snapshot = {
         "collected_at_utc": datetime.now(timezone.utc).isoformat(),
-        "event_id": event_id
+        "event_id": event_id,
+        "responses": []
     }
 
     with sync_playwright() as p:
@@ -80,45 +37,75 @@ def collect(event_id):
 
         page = context.new_page()
 
-        print("Abrindo SofaScore...")
+        def capture_response(response):
+
+            url = response.url
+
+            if "/api/" not in url:
+                return
+
+            print(f"API encontrada: {url}")
+
+            try:
+
+                if response.status == 200:
+
+                    data = response.json()
+
+                    snapshot["responses"].append({
+                        "url": url,
+                        "status": response.status,
+                        "data": data
+                    })
+
+                    print(
+                        f"OK: {url}"
+                    )
+
+                else:
+
+                    print(
+                        f"API retornou {response.status}: {url}"
+                    )
+
+            except Exception as e:
+
+                print(
+                    f"Não foi possível ler resposta: {e}"
+                )
+
+        page.on("response", capture_response)
+
+        match_url = (
+            f"https://www.sofascore.com/"
+            f"hellas-verona-u20-cesena-u20/"
+            f"bLFgsgLFg#id:{event_id}"
+        )
+
+        print("Abrindo página do jogo...")
 
         page.goto(
-            "https://www.sofascore.com/",
+            match_url,
             wait_until="domcontentloaded",
-            timeout=30000
+            timeout=60000
         )
 
-        page.wait_for_timeout(5000)
+        print("Página do jogo aberta.")
 
-        print("SofaScore aberto.")
+        print("Aguardando carregamento dos dados...")
 
-        # Dados principais do evento
-        snapshot["event"] = get_json(
-            page,
-            f"{BASE}/event/{event_id}"
-        )
+        page.wait_for_timeout(15000)
 
-        # Estatísticas
-        snapshot["statistics"] = get_json(
-            page,
-            f"{BASE}/event/{event_id}/statistics"
-        )
-
-        # Incidentes
-        snapshot["incidents"] = get_json(
-            page,
-            f"{BASE}/event/{event_id}/incidents"
-        )
-
-        # Gráfico de pressão/momentum
-        snapshot["graph"] = get_json(
-            page,
-            f"{BASE}/event/{event_id}/graph"
+        print(
+            f"Total de respostas API capturadas: "
+            f"{len(snapshot['responses'])}"
         )
 
         browser.close()
 
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    timestamp = datetime.now(timezone.utc).strftime(
+        "%Y%m%dT%H%M%SZ"
+    )
 
     path = OUT / f"{event_id}_{timestamp}.json"
 
@@ -132,16 +119,20 @@ def collect(event_id):
     )
 
     print("")
-    print("======================================")
-    print("COLETA CONCLUÍDA COM SUCESSO")
-    print(f"Arquivo salvo: {path}")
-    print("======================================")
+    print("==============================")
+    print("COLETA CONCLUÍDA")
+    print(f"Arquivo: {path}")
+    print("==============================")
 
 
 if __name__ == "__main__":
 
     if len(sys.argv) < 2:
-        print("Uso: python collector.py EVENT_ID")
+
+        print(
+            "Uso: python collector.py EVENT_ID"
+        )
+
         sys.exit(1)
 
     collect(sys.argv[1])
