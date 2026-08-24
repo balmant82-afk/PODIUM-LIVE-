@@ -74,7 +74,10 @@ def collect(event_id):
                     f"Não foi possível ler resposta: {e}"
                 )
 
-        page.on("response", capture_response)
+        page.on(
+    "request",
+    lambda request: print(f"REQUEST: {request.url}")
+)
 
         match_url = (
             f"https://www.sofascore.com/"
